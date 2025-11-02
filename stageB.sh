@@ -107,14 +107,14 @@ log "Testing database connectivity and data integrity..."
 
 # Execute SQL queries to verify table existence and basic data integrity
 # These queries will fail if tables don't exist or are corrupted
-if ! sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF
+if ! sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF > /dev/null 2>&1
 SELECT COUNT(*) as customer_count FROM customers;  -- Verify customers table exists and has data
 SELECT COUNT(*) as order_count FROM orders;        -- Verify orders table exists and has data
 SELECT COUNT(*) as invoice_count FROM invoices;     -- Verify invoices table exists and has data
 EXIT;  -- Exit SQL*Plus cleanly
 EOF
 then
-    log "ERROR: Database connectivity or data integrity test failed"
+    log "ERROR: Database connectivity or data integrity test failed - Connection string: $DB_USER@$DB_HOST/$DB_SID"
     exit 1  # Fail stage if database schema or data is corrupted
 fi
 log "Database connectivity and data integrity test passed"
