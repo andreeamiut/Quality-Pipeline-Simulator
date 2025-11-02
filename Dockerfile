@@ -22,8 +22,8 @@ RUN set -ex && \
     echo "Installing Oracle Instant Client..." && \
     wget -q https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-basic-linux.x64-19.23.0.0.0dbru.zip && \
     wget -q https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip && \
-    unzip instantclient-basic-linux.x64-19.23.0.0.0dbru.zip && \
-    unzip instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip && \
+    unzip -o instantclient-basic-linux.x64-19.23.0.0.0dbru.zip && \
+    unzip -o instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip && \
     mv instantclient_19_23 /opt/oracle && \
     rm ./*.zip && \
     ln -s /opt/oracle/sqlplus /usr/local/bin/sqlplus && \
