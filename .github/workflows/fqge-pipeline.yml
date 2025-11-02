@@ -1,0 +1,83 @@
+name: FQGE Quality Gate Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  fqge-validation:
+    runs-on: ubuntu-latest
+
+    services:
+      oracle-db:
+        image: gvenzl/oracle-xe:21-slim
+        env:
+          ORACLE_PASSWORD: oracle123
+          APP_USER: fqge_user
+          APP_USER_PASSWORD: fqge_password
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd healthcheck.sh
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build FQGE Docker image
+      run: docker build -t fqge-app .
+
+    - name: Wait for Oracle DB to be ready
+      run: |
+        echo "Waiting for Oracle DB to be healthy..."
+        for i in {1..60}; do
+          if docker exec $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim) /opt/oracle/healthcheck.sh; then
+            echo "Oracle DB is ready!"
+            break
+          fi
+          echo "Waiting... ($i/60)"
+          sleep 10
+        done
+
+    - name: Setup Oracle database
+      run: |
+        docker exec $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim) /opt/oracle/createAppUser fqge_user fqge_password
+        docker cp oracle_setup.sql $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim):/oracle_setup.sql
+        docker exec $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim) sqlplus -s sys/oracle123@XE AS SYSDBA @/oracle_setup.sql
+
+    - name: Run FQGE Quality Gate Validation
+      run: |
+        docker run --rm --link $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim):oracle-db \
+          -v ${{ github.workspace }}:/app -w /app fqge-app \
+          sh -c "chmod +x fqge.sh && ./fqge.sh"
+
+    - name: Upload FQGE Report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: fqge-report
+        path: fqge_report.log
+
+    - name: Check FQGE Results
+      run: |
+        if [ -f fqge_report.log ]; then
+          if grep -q "FINAL DECISION: APPROVAL" fqge_report.log; then
+            echo "✅ Quality Gate PASSED"
+            exit 0
+          else
+            echo "❌ Quality Gate FAILED"
+            cat fqge_report.log
+            exit 1
+          fi
+        else
+          echo "❌ FQGE report not found"
+          exit 1
+        fi

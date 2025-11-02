@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  oracle-db:
+    environment:
+      - ORACLE_PASSWORD=oracle123
+      - APP_USER=fqge_user
+      - APP_USER_PASSWORD=fqge_password
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+      - ./oracle_setup.sql:/container-entrypoint-initdb.d/01_setup.sql
+      - ./oracle_validation.sql:/container-entrypoint-initdb.d/02_validation.sql
+      - ./oracle_test_runner.sql:/container-entrypoint-initdb.d/03_test_runner.sql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - fqge-network
+
+  fqge-app:
+    build: .
+    container_name: fqge-app
+    depends_on:
+      - oracle-db
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    environment:
+      - DB_HOST=oracle-db
+      - DB_USER=fqge_user
+      - DB_PASS=fqge_password
+      - DB_SID=XE
+      - REMOTE_HOST=fqge-app
+      - REMOTE_USER=root
+      - SSH_KEY=/root/.ssh/id_rsa
+      - JMETER_HOME=/opt/jmeter
+    command: ["bash", "-c", "echo 'FQGE Docker environment ready.' && echo 'Run: docker-compose exec fqge-app ./fqge.sh' && tail -f /dev/null"]
+    networks:
+      - fqge-network
+
+  # Mock API server for testing
+  mock-api:
+    image: nginx:alpine
+    container_name: fqge-mock-api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./mock-api.conf:/etc/nginx/conf.d/default.conf
+      - ./mock-api:/usr/share/nginx/html
+    networks:
+      - fqge-network
+
+volumes:
+  oracle_data:
+
+networks:
+  fqge-network:
+    driver: bridge

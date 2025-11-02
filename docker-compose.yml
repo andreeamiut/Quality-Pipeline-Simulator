@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  oracle-db:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: fqge-oracle-db
+    environment:
+      - ORACLE_PASSWORD=oracle
+      - APP_USER=fqge_user
+      - APP_USER_PASSWORD=fqge_password
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+      - ./oracle_setup.sql:/container-entrypoint-initdb.d/01_setup.sql
+      - ./oracle_validation.sql:/container-entrypoint-initdb.d/02_validation.sql
+      - ./oracle_test_runner.sql:/container-entrypoint-initdb.d/03_test_runner.sql
+    networks:
+      - fqge-network
+
+  fqge-app:
+    image: alpine:latest
+    container_name: fqge-app
+    depends_on:
+      - oracle-db
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "echo 'FQGE environment ready. Run ./fqge.sh to start validation.' && tail -f /dev/null"
+    networks:
+      - fqge-network
+
+volumes:
+  oracle_data:
+
+networks:
+  fqge-network:
+    driver: bridge
