@@ -67,11 +67,11 @@ execute_sql() {
 
     # Execute query using SQL*Plus with silent options for clean output
     sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF
-SET HEADING OFF     -- Suppress column headers
-SET FEEDBACK OFF    -- Suppress "X rows selected" messages
-SET PAGESIZE 0      -- Disable pagination
-$query;             -- Execute the provided query
-EXIT;               -- Exit SQL*Plus cleanly
+SET HEADING OFF
+SET FEEDBACK OFF
+SET PAGESIZE 0
+$query;
+EXIT;
 EOF
 }
 
@@ -84,7 +84,7 @@ EOF
 log "Validating order status..."
 
 # Query the order status for the specific ORDER_ID from Stage B
-ORDER_STATUS=$(execute_sql "SELECT order_status FROM orders WHERE id = $ORDER_ID;")
+ORDER_STATUS=$(execute_sql "SELECT order_status FROM orders WHERE id = '$ORDER_ID'")
 
 # Check if the order exists in the database
 if [ -z "$ORDER_STATUS" ]; then

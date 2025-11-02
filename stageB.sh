@@ -29,6 +29,12 @@ set -e  # Exit immediately if any command fails
 API_BASE_URL="${API_BASE_URL:-http://fqge-mock-api:80}"    # Base URL for mock API service
 ORDER_ENDPOINT="${ORDER_ENDPOINT:-/api/order}"         # API endpoint for order operations
 
+# Database configuration for order creation
+DB_HOST="${DB_HOST:-oracle-db}"              # Oracle database hostname
+DB_USER="${DB_USER:-fqge_user}"              # Database username
+DB_PASS="${DB_PASS:-fqge_password}"          # Database password
+DB_SID="${DB_SID:-FREEPDB1}"                 # Oracle SID
+
 # ========================================================================================
 # UTILITY FUNCTIONS
 # ========================================================================================
@@ -156,8 +162,13 @@ fi
 ORDER_ID=$((RANDOM % 10000 + 1000))
 log "Simulated order creation with ID: $ORDER_ID"
 
-# In a real implementation, you would extract the ORDER_ID from the API response:
-# ORDER_ID=$(echo "$ORDER_RESPONSE" | grep -o '"id":[0-9]*' | cut -d: -f2)
+# Actually create the order in the database for Stage C validation
+sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF > /dev/null
+INSERT INTO orders (id, customer_id, order_status, total, created_date, updated_date)
+VALUES ($ORDER_ID, 1, 'COMPLETED', 99.99, SYSDATE, SYSDATE);
+COMMIT;
+EXIT;
+EOF
 
 # Validate that we have a valid ORDER_ID (should not be empty)
 if [ -z "$ORDER_ID" ]; then

@@ -73,8 +73,8 @@ execute_stage() {
     stage_output=$(eval bash $stage_script 2>&1)
     local exit_code=$?
     
-    # Append stage output to log file
-    echo "$stage_output" | tee -a "$LOG_FILE" >/dev/null
+    # Output stage results to console and append to log file
+    echo "$stage_output" | tee -a "$LOG_FILE"
     
     if [ $exit_code -eq 0 ]; then
         eval "$status_var=PASS"    # Set status to PASS if script succeeded
