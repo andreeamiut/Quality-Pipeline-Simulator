@@ -57,7 +57,7 @@ jobs:
     - name: Run FQGE Quality Gate Validation
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
-        docker run --rm --link $CONTAINER_ID:oracle-db \
+        docker run --rm --network container:$CONTAINER_ID \
           -v ${{ github.workspace }}:/app -w /app fqge-app \
           sh -c "chmod +x fqge.sh && ./fqge.sh"
 
