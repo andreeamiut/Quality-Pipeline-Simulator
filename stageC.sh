@@ -37,6 +37,7 @@ ORDER_ID="$1"                                # Order ID from Stage B (command li
 # INPUT VALIDATION
 # ========================================================================================
 # Ensure ORDER_ID was provided by the main script
+echo "DEBUG: Received ORDER_ID = '$ORDER_ID'"
 if [ -z "$ORDER_ID" ]; then
     echo "ERROR: ORDER_ID not provided"
     exit 1  # Cannot proceed without order ID from Stage B

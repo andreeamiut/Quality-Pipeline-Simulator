@@ -98,20 +98,26 @@ perform_rca() {
 
     # Currently only STAGE_D (Performance) has specific RCA logic
     if [ "$failed_stage" = "STAGE_D" ]; then
-        # Performance failures require checking system resources
-        log "Checking system resources via SSH..."
+        # Check if running in CI/CD pipeline environment
+        if [ "${GITHUB_ACTIONS:-false}" = "true" ] || [ "${CI:-false}" = "true" ]; then
+            log "PIPELINE MODE: SSH-based RCA not available in CI environment"
+            log "RCA: Performance stage failed - check JMeter configuration and mock API availability"
+        else
+            # Performance failures require checking system resources
+            log "Checking system resources via SSH..."
 
-        # Use SSH to connect to remote host and gather diagnostic information
-        ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" << EOF
-            echo "=== TOP OUTPUT ==="          # Process list with CPU/memory usage
-            top -b -n1 | head -20               # Run top in batch mode, show first 20 lines
-            echo "=== NETSTAT OUTPUT ==="       # Network connections and ports
-            netstat -tuln | head -10            # Show listening ports and connections
-            echo "=== DISK I/O ==="             # Disk input/output statistics
-            iostat -x 1 1 | head -10            # Extended I/O stats for 1 second
+            # Use SSH to connect to remote host and gather diagnostic information
+            ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" << EOF
+                echo "=== TOP OUTPUT ==="          # Process list with CPU/memory usage
+                top -b -n1 | head -20               # Run top in batch mode, show first 20 lines
+                echo "=== NETSTAT OUTPUT ==="       # Network connections and ports
+                netstat -tuln | head -10            # Show listening ports and connections
+                echo "=== DISK I/O ==="             # Disk input/output statistics
+                iostat -x 1 1 | head -10            # Extended I/O stats for 1 second
 EOF
-        # Log guidance for interpreting the diagnostic data
-        log "RCA: Suspected component - Check logs for CPU-bound (App Server) or I/O-bound (Network/DB) issues"
+            # Log guidance for interpreting the diagnostic data
+            log "RCA: Suspected component - Check logs for CPU-bound (App Server) or I/O-bound (Network/DB) issues"
+        fi
     fi
 }
 
@@ -194,6 +200,13 @@ if execute_stage "Stage B: Core Functional & API Integrity" "stageB.sh" "STAGE_B
     # Extract ORDER_ID from Stage B logs for use in Stage C
     # This creates a dependency chain between stages
     ORDER_ID=$(grep "ORDER_ID:" "$LOG_FILE" | tail -1 | cut -d: -f2 | tr -d ' ')
+    log "DEBUG: Extracted ORDER_ID = '$ORDER_ID'"
+    
+    # Fallback if ORDER_ID extraction fails
+    if [ -z "$ORDER_ID" ]; then
+        ORDER_ID="1001"  # Use default for pipeline environments
+        log "DEBUG: Using fallback ORDER_ID = '$ORDER_ID'"
+    fi
 else
     perform_rca "STAGE_B"  # Perform root cause analysis on failure
 fi

@@ -83,6 +83,9 @@ rm -rf "$REPORT_DIR"     # Remove previous HTML report directory
 # ========================================================================================
 log "Running JMeter load test..."
 
+# Debug environment variables
+log "DEBUG: GITHUB_ACTIONS=${GITHUB_ACTIONS:-false}, CI=${CI:-false}"
+
 # Check if running in CI/CD pipeline environment
 if [ "${GITHUB_ACTIONS:-false}" = "true" ] || [ "${CI:-false}" = "true" ]; then
     log "PIPELINE MODE: Skipping JMeter execution (mock API not available)"
