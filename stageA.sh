@@ -57,12 +57,14 @@ log "Checking database connectivity..."
 
 # Attempt to connect to Oracle database and execute a simple test query
 # Redirect all output to /dev/null to avoid cluttering logs with SQL*Plus output
+# Note: In GitHub Actions, the database connection string needs to match the service configuration
 if ! sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF > /dev/null 2>&1
 SELECT 1 FROM dual;  -- Simple test query that should always work if DB is accessible
 EXIT;                -- Exit SQL*Plus cleanly
 EOF
 then
-    log "ERROR: Database connectivity check failed"
+    log "ERROR: Database connectivity check failed - Connection string: $DB_USER@$DB_HOST/$DB_SID"
+    log "Troubleshooting: Check if Oracle service is running and network connectivity"
     exit 1  # Fail the entire stage if database is unreachable
 fi
 log "Database connectivity check passed"
