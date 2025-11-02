@@ -68,8 +68,15 @@ execute_stage() {
     log "Starting $stage_name"    # Log the beginning of stage execution
 
     # Execute the stage script and check return code
-    # Use eval to properly handle scripts with arguments
-    if eval bash $stage_script; then
+    # Use eval to properly handle scripts with arguments and capture output to log
+    local stage_output
+    stage_output=$(eval bash $stage_script 2>&1)
+    local exit_code=$?
+    
+    # Append stage output to log file
+    echo "$stage_output" | tee -a "$LOG_FILE" >/dev/null
+    
+    if [ $exit_code -eq 0 ]; then
         eval "$status_var=PASS"    # Set status to PASS if script succeeded
         log "$stage_name PASSED"   # Log successful completion
     else
