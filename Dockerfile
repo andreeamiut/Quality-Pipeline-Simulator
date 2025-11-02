@@ -1,6 +1,32 @@
+# ========================================================================================
+# FQGE DOCKER IMAGE BUILD CONFIGURATION
+# ========================================================================================
+# Purpose: Create a Docker image with all tools needed for FQGE quality validation
+# Base Image: Ubuntu 20.04 (LTS with good library compatibility)
+# Installed Tools:
+#   - Apache JMeter 5.6.3 (for performance testing)
+#   - Oracle Instant Client (for database connectivity)
+#   - OpenJDK 11 (for JMeter execution)
+#   - SSH client (for remote diagnostics)
+#   - Various utilities (curl, wget, unzip)
+# ========================================================================================
+
+# ========================================================================================
+# BASE IMAGE SELECTION
+# ========================================================================================
+# Ubuntu 20.04 chosen for:
+# - LTS stability and security updates
+# - Compatible readline libraries (fixes Stage D issues)
+# - Broad package ecosystem
+# ========================================================================================
 FROM ubuntu:20.04
 
-# Install required packages
+# ========================================================================================
+# SYSTEM PACKAGE INSTALLATION
+# ========================================================================================
+# Install essential system packages required for FQGE operation
+# Uses apt-get for Ubuntu/Debian package management
+# ========================================================================================
 RUN apt-get update && apt-get install -y \
     bash \
     curl \
@@ -11,8 +37,17 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install JMeter and Oracle Instant Client (for SQL*Plus)
+# ========================================================================================
+# JMETER AND ORACLE CLIENT INSTALLATION
+# ========================================================================================
+# Install Apache JMeter for performance testing and Oracle Instant Client for database access
+# These tools are essential for Stage D (Performance) and database connectivity validation
+# ========================================================================================
+
+# Set JMeter version as environment variable for easy updates
 ENV JMETER_VERSION=5.6.3
+
+# Download and install JMeter and Oracle Instant Client
 RUN set -ex && \
     echo "Installing JMeter..." && \
     wget -q https://downloads.apache.org/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz && \
@@ -30,19 +65,41 @@ RUN set -ex && \
     ln -s /opt/oracle/sqlplus /usr/local/bin/sqlplus && \
     echo /opt/oracle > /etc/ld-musl-x86_64.path
 
-# Set environment variables
+# ========================================================================================
+# ENVIRONMENT CONFIGURATION
+# ========================================================================================
+# Set environment variables for tool accessibility and Oracle client configuration
+# ========================================================================================
 ENV PATH="/opt/jmeter/bin:/opt/oracle:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/oracle:${LD_LIBRARY_PATH}"
 ENV ORACLE_HOME="/opt/oracle"
 
-# Create app directory
+# ========================================================================================
+# APPLICATION DIRECTORY SETUP
+# ========================================================================================
+# Create and set the working directory for FQGE application files
+# ========================================================================================
 WORKDIR /app
 
-# Copy FQGE files
+# ========================================================================================
+# APPLICATION FILE COPY
+# ========================================================================================
+# Copy all FQGE project files into the container
+# This includes scripts, configurations, and test data
+# ========================================================================================
 COPY . .
 
-# Make scripts executable
+# ========================================================================================
+# SCRIPT PERMISSIONS
+# ========================================================================================
+# Make all shell scripts executable for FQGE pipeline execution
+# ========================================================================================
 RUN chmod +x ./*.sh
 
-# Default command
+# ========================================================================================
+# DEFAULT CONTAINER COMMAND
+# ========================================================================================
+# Set default command to bash for interactive container usage
+# Allows manual execution of FQGE scripts or debugging
+# ========================================================================================
 CMD ["bash"]

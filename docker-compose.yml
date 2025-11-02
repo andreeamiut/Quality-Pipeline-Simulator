@@ -1,38 +1,80 @@
-version: '3.8'
+# ========================================================================================
+# DOCKER COMPOSE CONFIGURATION FOR FQGE QUALITY GATE ENVIRONMENT
+# ========================================================================================
+# Purpose: Define multi-container environment for FQGE validation pipeline
+# Services: Oracle database and FQGE application containers
+# Networks: Isolated bridge network for secure inter-container communication
+# Volumes: Persistent Oracle data storage
+#
+# Usage: docker-compose up -d (starts all services)
+#        docker-compose exec fqge-app ./fqge.sh (runs validation)
+# ========================================================================================
+
+version: '3.8'  # Docker Compose file format version
 
 services:
+  # ====================================================================================
+  # SERVICE: oracle-db - ORACLE DATABASE CONTAINER
+  # ====================================================================================
+  # Purpose: Provides Oracle 19c database for data persistence and validation testing
+  # Image: gvenzl/oracle-free:latest (official Oracle Docker image)
+  # Ports: 1521 (Oracle listener port exposed to host)
+  # Initialization: Runs SQL scripts on first startup to set up test schema
+  # ====================================================================================
   oracle-db:
-    image: gvenzl/oracle-free:latest
-    container_name: fqge-oracle-db
+    image: gvenzl/oracle-free:latest                    # Oracle 19c Free Edition
+    container_name: fqge-oracle-db                      # Fixed container name for reference
     environment:
-      - ORACLE_PASSWORD=oracle
-      - APP_USER=fqge_user
-      - APP_USER_PASSWORD=fqge_password
+      - ORACLE_PASSWORD=oracle                          # SYS/SYSTEM password
+      - APP_USER=fqge_user                              # Application user (auto-created)
+      - APP_USER_PASSWORD=fqge_password                 # Application user password
     ports:
-      - "1521:1521"
+      - "1521:1521"                                     # Expose Oracle listener port
     volumes:
-      - oracle_data:/opt/oracle/oradata
-      - ./oracle_setup.sql:/container-entrypoint-initdb.d/01_setup.sql
-      - ./oracle_validation.sql:/container-entrypoint-initdb.d/02_validation.sql
-      - ./oracle_test_runner.sql:/container-entrypoint-initdb.d/03_test_runner.sql
+      - oracle_data:/opt/oracle/oradata                 # Persistent data volume
+      - ./oracle_setup.sql:/container-entrypoint-initdb.d/01_setup.sql        # Schema setup
+      - ./oracle_validation.sql:/container-entrypoint-initdb.d/02_validation.sql  # Validation queries
+      - ./oracle_test_runner.sql:/container-entrypoint-initdb.d/03_test_runner.sql # Test execution
     networks:
-      - fqge-network
+      - fqge-network                                    # Attach to isolated network
 
+  # ====================================================================================
+  # SERVICE: fqge-app - FQGE APPLICATION CONTAINER
+  # ====================================================================================
+  # Purpose: Runs the FQGE validation scripts and tools
+  # Build: Uses local Dockerfile to create custom image with JMeter and Oracle client
+  # Dependencies: Waits for oracle-db to be ready before starting
+  # Volumes: Mounts project directory for access to scripts and configs
+  # Command: Keeps container running for interactive validation execution
+  # ====================================================================================
   fqge-app:
-    build: .
-    container_name: fqge-app
+    build: .                                             # Build from local Dockerfile
+    container_name: fqge-app                             # Fixed container name for reference
     depends_on:
-      - oracle-db
+      - oracle-db                                        # Start after database is ready
     volumes:
-      - .:/app
-    working_dir: /app
+      - .:/app                                           # Mount project directory
+    working_dir: /app                                    # Set working directory
     command: sh -c "echo 'FQGE environment ready. Run ./fqge.sh to start validation.' && tail -f /dev/null"
+                                                         # Startup message and keep-alive
     networks:
-      - fqge-network
+      - fqge-network                                     # Attach to isolated network
 
+# ========================================================================================
+# VOLUMES SECTION
+# ========================================================================================
+# Purpose: Define named volumes for persistent data storage
+# oracle_data: Stores Oracle database files between container restarts
+# ========================================================================================
 volumes:
-  oracle_data:
+  oracle_data:                                           # Named volume for Oracle data persistence
 
+# ========================================================================================
+# NETWORKS SECTION
+# ========================================================================================
+# Purpose: Define isolated networks for secure inter-container communication
+# fqge-network: Bridge network allowing oracle-db and fqge-app to communicate
+# ========================================================================================
 networks:
   fqge-network:
-    driver: bridge
+    driver: bridge                                      # Bridge driver for container networking
