@@ -4,6 +4,8 @@ FROM alpine:3.19
 RUN apk add --no-cache \
     bash \
     curl \
+    libgcc \
+    ncurses-libs \
     openjdk11-jre \
     openssh-client \
     readline \
