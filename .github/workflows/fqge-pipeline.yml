@@ -52,7 +52,7 @@ jobs:
       oracle-db:
         image: gvenzl/oracle-free:latest      # Official Oracle 19c Free Edition image
         env:
-          ORACLE_PASSWORD: oracle123          # SYS/SYSTEM password
+          ORACLE_PASSWORD: oracle             # SYS/SYSTEM password (match local config)
           APP_USER: fqge_user                 # Application user (auto-created)
           APP_USER_PASSWORD: fqge_password    # Application user password
         ports:
@@ -129,7 +129,7 @@ jobs:
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
         docker cp oracle_setup.sql $CONTAINER_ID:/oracle_setup.sql
-        docker exec $CONTAINER_ID sqlplus -s sys/oracle123@FREEPDB1 AS SYSDBA @/oracle_setup.sql
+        docker exec $CONTAINER_ID sqlplus -s sys/oracle@FREEPDB1 AS SYSDBA @/oracle_setup.sql
 
     # ================================================================================
     # STEP 6: FQGE QUALITY GATE VALIDATION EXECUTION
@@ -143,8 +143,17 @@ jobs:
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
         docker run --rm --network container:$CONTAINER_ID \
-          -v ${{ github.workspace }}:/app -w /app fqge-app \
-          sh -c "chmod +x fqge.sh && ./fqge.sh"
+          -v ${{ github.workspace }}:/app -w /app \
+          -e DB_HOST=localhost \
+          -e DB_USER=fqge_user \
+          -e DB_PASS=fqge_password \
+          -e DB_SID=freepdb1 \
+          -e REMOTE_HOST=localhost \
+          -e REMOTE_USER=root \
+          -e SSH_KEY=/root/.ssh/id_rsa \
+          -e JMETER_HOME=/opt/jmeter \
+          fqge-app \
+          sh -c "apt-get update && apt-get install -y bc && chmod +x fqge.sh && ./fqge.sh"
 
     # ================================================================================
     # STEP 7: ARTIFACT UPLOAD (REPORT ARCHIVAL)
