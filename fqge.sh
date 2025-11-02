@@ -199,7 +199,7 @@ fi
 # - Foreign key relationships
 # - Uses ORDER_ID from Stage B to verify specific data
 # ========================================================================================
-if execute_stage "Stage C: Data Persistence & Consistency" "stageC.sh" "STAGE_C_STATUS"; then
+if execute_stage "Stage C: Data Persistence & Consistency" "stageC.sh $ORDER_ID" "STAGE_C_STATUS"; then
     :  # No additional actions needed on success
 else
     perform_rca "STAGE_C"  # Perform root cause analysis on failure

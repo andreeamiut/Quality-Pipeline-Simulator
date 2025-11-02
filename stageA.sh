@@ -65,7 +65,14 @@ EOF
 then
     log "ERROR: Database connectivity check failed - Connection string: $DB_USER@$DB_HOST/$DB_SID"
     log "Troubleshooting: Check if Oracle service is running and network connectivity"
-    exit 1  # Fail the entire stage if database is unreachable
+    # Try alternative connection string for local container networking
+    if ! sqlplus -s "$DB_USER/$DB_PASS@//$DB_HOST:1521/$DB_SID" << EOF > /dev/null 2>&1
+SELECT 1 FROM dual;
+EXIT;
+EOF
+    then
+        exit 1  # Fail the entire stage if database is unreachable
+    fi
 fi
 log "Database connectivity check passed"
 

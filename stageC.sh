@@ -30,7 +30,7 @@ set -e  # Exit immediately if any command fails
 DB_HOST="${DB_HOST:-oracle-db}"              # Oracle database hostname
 DB_USER="${DB_USER:-fqge_user}"              # Database username
 DB_PASS="${DB_PASS:-fqge_password}"          # Database password
-DB_SID="${DB_SID:-XE}"                       # Oracle SID
+DB_SID="${DB_SID:-FREEPDB1}"                 # Oracle SID
 ORDER_ID="$1"                                # Order ID from Stage B (command line argument)
 
 # ========================================================================================

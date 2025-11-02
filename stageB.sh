@@ -26,7 +26,7 @@ set -e  # Exit immediately if any command fails
 # ========================================================================================
 # CONFIGURATION SECTION
 # ========================================================================================
-API_BASE_URL="${API_BASE_URL:-http://mock-api:80}"    # Base URL for mock API service
+API_BASE_URL="${API_BASE_URL:-http://fqge-mock-api:80}"    # Base URL for mock API service
 ORDER_ENDPOINT="${ORDER_ENDPOINT:-/api/order}"         # API endpoint for order operations
 
 # ========================================================================================
