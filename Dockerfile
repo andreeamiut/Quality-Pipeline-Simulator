@@ -5,9 +5,11 @@ RUN apk add --no-cache \
     bash \
     curl \
     libaio \
+    ncurses \
     openjdk11-jre \
     openssh-client \
     readline \
+    readline-dev \
     unzip \
     wget \
     && rm -rf /var/cache/apk/*
