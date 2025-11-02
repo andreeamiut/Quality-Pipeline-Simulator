@@ -12,7 +12,7 @@ RUN apk add --no-cache \
 
 # Install JMeter and Oracle Instant Client (for SQL*Plus)
 ENV JMETER_VERSION=5.6.3
-RUN set -e && \
+RUN set -ex && \
     echo "Installing JMeter..." && \
     wget -q https://downloads.apache.org/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz && \
     tar -xzf apache-jmeter-${JMETER_VERSION}.tgz && \
