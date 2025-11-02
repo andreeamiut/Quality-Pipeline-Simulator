@@ -57,11 +57,11 @@ jobs:
           APP_USER_PASSWORD: fqge_password    # Application user password
         ports:
           - 1521:1521                         # Expose Oracle listener port
-        options: >-                           # Health check configuration
-          --health-cmd healthcheck.sh         # Health check command
-          --health-interval 30s               # Check every 30 seconds
-          --health-timeout 10s                # Timeout after 10 seconds
-          --health-retries 5                  # Retry 5 times before failing
+        options: >-
+          --health-cmd healthcheck.sh
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
 
     # ==================================================================================
     # EXECUTION STEPS
