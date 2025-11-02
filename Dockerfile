@@ -6,6 +6,7 @@ RUN apk add --no-cache \
     curl \
     openjdk11-jre \
     openssh-client \
+    readline \
     readline-dev \
     unzip \
     wget \
