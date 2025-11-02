@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   oracle-db:
-    image: gvenzl/oracle-xe:21-slim
+    image: gvenzl/oracle-free:latest
     container_name: fqge-oracle-db
     environment:
       - ORACLE_PASSWORD=oracle
@@ -19,7 +19,7 @@ services:
       - fqge-network
 
   fqge-app:
-    image: alpine:latest
+    build: .
     container_name: fqge-app
     depends_on:
       - oracle-db
