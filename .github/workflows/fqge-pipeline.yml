@@ -39,7 +39,8 @@ jobs:
       run: |
         echo "Waiting for Oracle DB to be healthy..."
         for i in {1..60}; do
-          if docker exec $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim) /opt/oracle/healthcheck.sh; then
+          CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
+          if [ -n "$CONTAINER_ID" ] && docker exec $CONTAINER_ID /opt/oracle/healthcheck.sh; then
             echo "Oracle DB is ready!"
             break
           fi
@@ -49,13 +50,15 @@ jobs:
 
     - name: Setup Oracle database
       run: |
-        docker exec $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim) /opt/oracle/createAppUser fqge_user fqge_password
-        docker cp oracle_setup.sql $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim):/oracle_setup.sql
-        docker exec $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim) sqlplus -s sys/oracle123@XE AS SYSDBA @/oracle_setup.sql
+        CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
+        docker exec $CONTAINER_ID /opt/oracle/createAppUser fqge_user fqge_password
+        docker cp oracle_setup.sql $CONTAINER_ID:/oracle_setup.sql
+        docker exec $CONTAINER_ID sqlplus -s sys/oracle123@FREEPDB1 AS SYSDBA @/oracle_setup.sql
 
     - name: Run FQGE Quality Gate Validation
       run: |
-        docker run --rm --link $(docker ps -q --filter ancestor=gvenzl/oracle-xe:21-slim):oracle-db \
+        CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
+        docker run --rm --link $CONTAINER_ID:oracle-db \
           -v ${{ github.workspace }}:/app -w /app fqge-app \
           sh -c "chmod +x fqge.sh && ./fqge.sh"
 
