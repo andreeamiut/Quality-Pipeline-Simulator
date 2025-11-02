@@ -63,6 +63,16 @@ jobs:
           --health-timeout 10s
           --health-retries 5
 
+      mock-api:
+        image: nginx:alpine                   # Lightweight nginx for mock API
+        ports:
+          - 8080:80                          # Expose mock API port
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
     # ==================================================================================
     # EXECUTION STEPS
     # ==================================================================================
@@ -132,7 +142,20 @@ jobs:
         docker exec $CONTAINER_ID sqlplus -s sys/oracle@FREEPDB1 AS SYSDBA @/oracle_setup.sql
 
     # ================================================================================
-    # STEP 6: FQGE QUALITY GATE VALIDATION EXECUTION
+    # STEP 6: MOCK API SETUP
+    # ================================================================================
+    # Purpose: Configure mock API service with proper endpoints
+    # Process: Copy configuration and start nginx with mock API endpoints
+    # Result: Mock API ready for Stage B testing
+    # =================================================================================
+    - name: Setup Mock API
+      run: |
+        MOCK_API_ID=$(docker ps -q --filter ancestor=nginx:alpine)
+        docker cp mock-api.conf $MOCK_API_ID:/etc/nginx/conf.d/default.conf
+        docker exec $MOCK_API_ID nginx -s reload
+
+    # ================================================================================
+    # STEP 7: FQGE QUALITY GATE VALIDATION EXECUTION
     # ================================================================================
     # Purpose: Run the complete 4-stage FQGE validation pipeline
     # Method: Execute fqge.sh in container with shared network access to Oracle DB
@@ -148,6 +171,7 @@ jobs:
           -e DB_USER=fqge_user \
           -e DB_PASS=fqge_password \
           -e DB_SID=freepdb1 \
+          -e API_BASE_URL=http://localhost:8080 \
           -e REMOTE_HOST=localhost \
           -e REMOTE_USER=root \
           -e SSH_KEY=/root/.ssh/id_rsa \
@@ -156,7 +180,7 @@ jobs:
           sh -c "apt-get update && apt-get install -y bc && chmod +x fqge.sh && ./fqge.sh"
 
     # ================================================================================
-    # STEP 7: ARTIFACT UPLOAD (REPORT ARCHIVAL)
+    # STEP 8: ARTIFACT UPLOAD (REPORT ARCHIVAL)
     # ================================================================================
     # Purpose: Save FQGE validation report as pipeline artifact for download/analysis
     # Action: actions/upload-artifact@v4 - Official GitHub artifact upload action
@@ -170,7 +194,7 @@ jobs:
         path: fqge_report.log                # File to upload
 
     # ================================================================================
-    # STEP 8: QUALITY GATE RESULT ANALYSIS
+    # STEP 9: QUALITY GATE RESULT ANALYSIS
     # ================================================================================
     # Purpose: Analyze FQGE results and set pipeline success/failure status
     # Logic: Check for "APPROVAL" in report to determine pass/fail
