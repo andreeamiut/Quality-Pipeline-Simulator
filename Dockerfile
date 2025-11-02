@@ -6,6 +6,7 @@ RUN apk add --no-cache \
     curl \
     openjdk11-jre \
     openssh-client \
+    readline-dev \
     unzip \
     wget \
     && rm -rf /var/cache/apk/*
