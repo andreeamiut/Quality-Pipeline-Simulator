@@ -6,6 +6,7 @@ RUN apk add --no-cache \
     curl \
     libaio \
     ncurses \
+    ncurses-dev \
     openjdk11-jre \
     openssh-client \
     readline \
