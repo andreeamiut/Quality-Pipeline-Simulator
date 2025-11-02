@@ -1,40 +1,110 @@
+# ========================================================================================
+# FQGE QUALITY GATE PIPELINE - GITHUB ACTIONS WORKFLOW
+# ========================================================================================
+# Purpose: Automated quality validation pipeline for the FQGE (FullStack Quality Gate Expert) system
+# Triggers: Push to main/master/develop branches, Pull requests to main/master
+# Runtime: Ubuntu latest with Oracle database service
+# Outcome: PASS/FAIL quality gate with detailed reporting
+#
+# Pipeline Stages:
+# 1. Infrastructure Setup (Oracle DB service)
+# 2. Code Checkout and Docker Build
+# 3. Database Initialization
+# 4. FQGE Validation Execution (4 stages)
+# 5. Results Analysis and Reporting
+# ========================================================================================
+
 name: FQGE Quality Gate Pipeline
 
+# ========================================================================================
+# TRIGGER CONFIGURATION
+# ========================================================================================
+# Pipeline triggers on code changes and pull requests
+# Supports multiple branch naming conventions (main/master/develop)
+# ========================================================================================
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop ]      # Trigger on pushes to these branches
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master ]               # Trigger on PRs targeting these branches
 
+# ========================================================================================
+# JOB DEFINITIONS
+# ========================================================================================
 jobs:
+  # ====================================================================================
+  # JOB: fqge-validation - MAIN QUALITY VALIDATION JOB
+  # ====================================================================================
+  # Purpose: Execute complete FQGE quality gate validation
+  # Runtime: Ubuntu latest (GitHub-hosted runner)
+  # Services: Oracle database container for data validation
+  # ====================================================================================
   fqge-validation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest                    # Use GitHub's Ubuntu runner
 
+    # ==================================================================================
+    # SERVICE CONTAINERS
+    # ==================================================================================
+    # Define supporting services that run alongside the main job
+    # Oracle database provides data persistence for validation stages
+    # ==================================================================================
     services:
       oracle-db:
-        image: gvenzl/oracle-free:latest
+        image: gvenzl/oracle-free:latest      # Official Oracle 19c Free Edition image
         env:
-          ORACLE_PASSWORD: oracle123
-          APP_USER: fqge_user
-          APP_USER_PASSWORD: fqge_password
+          ORACLE_PASSWORD: oracle123          # SYS/SYSTEM password
+          APP_USER: fqge_user                 # Application user (auto-created)
+          APP_USER_PASSWORD: fqge_password    # Application user password
         ports:
-          - 1521:1521
-        options: >-
-          --health-cmd healthcheck.sh
-          --health-interval 30s
-          --health-timeout 10s
-          --health-retries 5
+          - 1521:1521                         # Expose Oracle listener port
+        options: >-                           # Health check configuration
+          --health-cmd healthcheck.sh         # Health check command
+          --health-interval 30s               # Check every 30 seconds
+          --health-timeout 10s                # Timeout after 10 seconds
+          --health-retries 5                  # Retry 5 times before failing
 
+    # ==================================================================================
+    # EXECUTION STEPS
+    # ==================================================================================
+    # Sequential steps to set up environment and execute validation
+    # Each step depends on successful completion of previous steps
+    # ==================================================================================
     steps:
+    # ================================================================================
+    # STEP 1: CODE CHECKOUT
+    # ================================================================================
+    # Purpose: Clone the repository code to the runner environment
+    # Action: actions/checkout@v4 - Official GitHub checkout action
+    # =================================================================================
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # ================================================================================
+    # STEP 2: DOCKER BUILDX SETUP
+    # ================================================================================
+    # Purpose: Enable advanced Docker build features for multi-platform builds
+    # Action: docker/setup-buildx-action@v3 - Official Docker setup action
+    # =================================================================================
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    # ================================================================================
+    # STEP 3: FQGE DOCKER IMAGE BUILD
+    # ================================================================================
+    # Purpose: Build the FQGE application Docker image with all required tools
+    # Command: Standard Docker build using local Dockerfile
+    # Result: fqge-app image ready for validation execution
+    # =================================================================================
     - name: Build FQGE Docker image
       run: docker build -t fqge-app .
 
+    # ================================================================================
+    # STEP 4: ORACLE DATABASE HEALTH CHECK
+    # ================================================================================
+    # Purpose: Wait for Oracle database service to be fully initialized and ready
+    # Method: Poll database health check script until successful or timeout
+    # Timeout: 10 minutes (60 iterations × 10 seconds)
+    # =================================================================================
     - name: Wait for Oracle DB to be ready
       run: |
         echo "Waiting for Oracle DB to be healthy..."
@@ -48,12 +118,27 @@ jobs:
           sleep 10
         done
 
+    # ================================================================================
+    # STEP 5: ORACLE DATABASE SCHEMA SETUP
+    # ================================================================================
+    # Purpose: Initialize database with test schema, tables, and sample data
+    # Process: Copy setup SQL file to container and execute as SYSDBA
+    # Result: Fully configured database ready for validation testing
+    # =================================================================================
     - name: Setup Oracle database
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
         docker cp oracle_setup.sql $CONTAINER_ID:/oracle_setup.sql
         docker exec $CONTAINER_ID sqlplus -s sys/oracle123@FREEPDB1 AS SYSDBA @/oracle_setup.sql
 
+    # ================================================================================
+    # STEP 6: FQGE QUALITY GATE VALIDATION EXECUTION
+    # ================================================================================
+    # Purpose: Run the complete 4-stage FQGE validation pipeline
+    # Method: Execute fqge.sh in container with shared network access to Oracle DB
+    # Networking: Use container networking to enable DB connectivity
+    # Volume Mount: Mount workspace for access to scripts and result storage
+    # =================================================================================
     - name: Run FQGE Quality Gate Validation
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
@@ -61,13 +146,28 @@ jobs:
           -v ${{ github.workspace }}:/app -w /app fqge-app \
           sh -c "chmod +x fqge.sh && ./fqge.sh"
 
+    # ================================================================================
+    # STEP 7: ARTIFACT UPLOAD (REPORT ARCHIVAL)
+    # ================================================================================
+    # Purpose: Save FQGE validation report as pipeline artifact for download/analysis
+    # Action: actions/upload-artifact@v4 - Official GitHub artifact upload action
+    # Condition: always() - Upload even if pipeline fails (for debugging)
+    # =================================================================================
     - name: Upload FQGE Report
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: fqge-report
-        path: fqge_report.log
+        name: fqge-report                    # Artifact name for download
+        path: fqge_report.log                # File to upload
 
+    # ================================================================================
+    # STEP 8: QUALITY GATE RESULT ANALYSIS
+    # ================================================================================
+    # Purpose: Analyze FQGE results and set pipeline success/failure status
+    # Logic: Check for "APPROVAL" in report to determine pass/fail
+    # Output: Clear success/failure message with full report on failure
+    # Exit Codes: 0=Pass (approval found), 1=Fail (approval not found or no report)
+    # =================================================================================
     - name: Check FQGE Results
       run: |
         if [ -f fqge_report.log ]; then
