@@ -1,18 +1,14 @@
-FROM alpine:3.19
+FROM ubuntu:22.04
 
 # Install required packages
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     bash \
     curl \
-    libgcc \
-    ncurses-libs \
-    openjdk11-jre \
+    openjdk-11-jre \
     openssh-client \
-    readline \
-    readline-dev \
     unzip \
     wget \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Install JMeter and Oracle Instant Client (for SQL*Plus)
 ENV JMETER_VERSION=5.6.3
