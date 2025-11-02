@@ -13,11 +13,13 @@ RUN apk add --no-cache \
 # Install JMeter and Oracle Instant Client (for SQL*Plus)
 ENV JMETER_VERSION=5.6.3
 RUN set -e && \
+    echo "Installing JMeter..." && \
     wget -q https://downloads.apache.org/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz && \
     tar -xzf apache-jmeter-${JMETER_VERSION}.tgz && \
     mv apache-jmeter-${JMETER_VERSION} /opt/jmeter && \
     rm apache-jmeter-${JMETER_VERSION}.tgz && \
     ln -s /opt/jmeter/bin/jmeter /usr/local/bin/jmeter && \
+    echo "Installing Oracle Instant Client..." && \
     wget -q https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-basic-linux.x64-19.23.0.0.0dbru.zip && \
     wget -q https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip && \
     unzip instantclient-basic-linux.x64-19.23.0.0.0dbru.zip && \
