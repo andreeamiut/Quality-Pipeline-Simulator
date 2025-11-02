@@ -56,19 +56,20 @@ log() {
 # Purpose: Executes a validation stage script and updates its status
 # Parameters:
 #   $1 - stage_name: Human-readable name of the stage (e.g., "Stage A: Infrastructure Health Check")
-#   $2 - stage_script: Filename of the script to execute (e.g., "stageA.sh")
+#   $2 - stage_script: Script command with arguments (e.g., "stageA.sh" or "stageC.sh $ORDER_ID")
 #   $3 - status_var: Name of the global variable to update (e.g., "STAGE_A_STATUS")
 # Returns: 0 on success, 1 on failure
 # Side effects: Updates the global status variable and logs results
 execute_stage() {
     local stage_name=$1      # First parameter: stage display name
-    local stage_script=$2    # Second parameter: script filename to execute
+    local stage_script=$2    # Second parameter: script command with arguments
     local status_var=$3      # Third parameter: global variable name for status tracking
 
     log "Starting $stage_name"    # Log the beginning of stage execution
 
     # Execute the stage script and check return code
-    if bash "$stage_script"; then
+    # Use eval to properly handle scripts with arguments
+    if eval bash $stage_script; then
         eval "$status_var=PASS"    # Set status to PASS if script succeeded
         log "$stage_name PASSED"   # Log successful completion
     else

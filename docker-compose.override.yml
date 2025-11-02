@@ -34,7 +34,7 @@ services:
       - DB_HOST=oracle-db
       - DB_USER=fqge_user
       - DB_PASS=fqge_password
-      - DB_SID=XE
+      - DB_SID=freepdb1
       - REMOTE_HOST=fqge-app
       - REMOTE_USER=root
       - SSH_KEY=/root/.ssh/id_rsa

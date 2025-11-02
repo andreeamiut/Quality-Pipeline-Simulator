@@ -50,6 +50,15 @@ services:
   fqge-app:
     build: .                                             # Build from local Dockerfile
     container_name: fqge-app                             # Fixed container name for reference
+    environment:
+      - DB_HOST=oracle-db                               # Oracle database hostname
+      - DB_USER=fqge_user                               # Database username
+      - DB_PASS=fqge_password                           # Database password
+      - DB_SID=freepdb1                                 # Oracle PDB name
+      - REMOTE_HOST=fqge-app                            # Remote host for SSH
+      - REMOTE_USER=root                                # SSH username
+      - SSH_KEY=/root/.ssh/id_rsa                       # SSH key path
+      - JMETER_HOME=/opt/jmeter                         # JMeter installation path
     depends_on:
       - oracle-db                                        # Start after database is ready
     volumes:
