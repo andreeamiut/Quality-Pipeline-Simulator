@@ -51,7 +51,6 @@ jobs:
     - name: Setup Oracle database
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
-        docker exec $CONTAINER_ID /opt/oracle/createAppUser fqge_user fqge_password
         docker cp oracle_setup.sql $CONTAINER_ID:/oracle_setup.sql
         docker exec $CONTAINER_ID sqlplus -s sys/oracle123@FREEPDB1 AS SYSDBA @/oracle_setup.sql
 
