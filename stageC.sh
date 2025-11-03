@@ -115,14 +115,20 @@ log "Checking data consistency between Orders and Invoices tables..."
 # Execute complex query to find data inconsistencies
 # MINUS returns orders that exist in first query but not in second
 # This finds completed orders that don't have corresponding invoices
-INCONSISTENCIES=$(execute_sql "
+INCONSISTENCIES=$(sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF
+SET HEADING OFF
+SET FEEDBACK OFF
+SET PAGESIZE 0
 SELECT id FROM orders WHERE order_status = 'COMPLETED'
 MINUS
 SELECT order_id FROM invoices;
-")
+EXIT;
+EOF
+)
 
-# Count the number of inconsistent records
-INCONSISTENCY_COUNT=$(echo "$INCONSISTENCIES" | wc -l)
+# Count the number of inconsistent records (filter out empty lines)
+INCONSISTENCY_COUNT=$(echo "$INCONSISTENCIES" | grep -c '[0-9]' 2>/dev/null || echo "0")
+INCONSISTENCY_COUNT=$(echo "$INCONSISTENCY_COUNT" | head -n1 | tr -d '[:space:]')
 
 # Fail if any inconsistencies are found
 if [ "$INCONSISTENCY_COUNT" -gt 0 ]; then

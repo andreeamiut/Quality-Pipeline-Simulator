@@ -166,6 +166,8 @@ log "Simulated order creation with ID: $ORDER_ID"
 sqlplus -s "$DB_USER/$DB_PASS@$DB_HOST/$DB_SID" << EOF > /dev/null
 INSERT INTO orders (id, customer_id, order_status, total, created_date, updated_date)
 VALUES ($ORDER_ID, 1, 'COMPLETED', 99.99, SYSDATE, SYSDATE);
+INSERT INTO invoices (id, order_id, invoice_number, amount, created_date)
+VALUES ($ORDER_ID, $ORDER_ID, 'INV-$ORDER_ID', 99.99, SYSDATE);
 COMMIT;
 EXIT;
 EOF
