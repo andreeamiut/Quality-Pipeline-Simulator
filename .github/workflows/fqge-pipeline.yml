@@ -122,45 +122,56 @@ jobs:
     # STEP 5: ORACLE DATABASE SCHEMA SETUP
     # ================================================================================
     # Purpose: Initialize database with test schema, tables, and sample data
-    # Process: Copy setup SQL file to container and execute as SYSDBA
+    # Process: Copy setup SQL file to container and execute as fqge_user
     # Result: Fully configured database ready for validation testing
     # =================================================================================
     - name: Setup Oracle database
       run: |
         CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
         docker cp oracle_setup.sql $CONTAINER_ID:/oracle_setup.sql
-        docker exec $CONTAINER_ID sqlplus -s sys/oracle@FREEPDB1 AS SYSDBA @/oracle_setup.sql
+        echo "Waiting for database to be fully ready..."
+        sleep 30
+        docker exec $CONTAINER_ID sqlplus fqge_user/fqge_password@FREEPDB1 @/oracle_setup.sql
 
 
 
     # ================================================================================
-    # STEP 6: FQGE QUALITY GATE VALIDATION EXECUTION
+    # STEP 6: START MOCK API SERVICE
+    # ================================================================================
+    # Purpose: Start mock API service for Stage B API testing
+    # Method: Run nginx container with basic API simulation
+    # =================================================================================
+    - name: Start Mock API Service
+      run: |
+        docker run -d --name mock-api -p 8080:80 nginx:alpine
+        # Create simple API endpoint for testing
+        docker exec mock-api sh -c 'echo "API Mock Service Running" > /usr/share/nginx/html/api'
+
+    # ================================================================================
+    # STEP 7: FQGE QUALITY GATE VALIDATION EXECUTION
     # ================================================================================
     # Purpose: Run the complete 4-stage FQGE validation pipeline
     # Method: Execute fqge.sh in container with shared network access to Oracle DB
-    # Networking: Use container networking to enable DB connectivity
+    # Networking: Use host network to enable DB and API connectivity
     # Volume Mount: Mount workspace for access to scripts and result storage
     # =================================================================================
     - name: Run FQGE Quality Gate Validation
       run: |
-        CONTAINER_ID=$(docker ps -q --filter ancestor=gvenzl/oracle-free:latest)
-        docker run --rm --network container:$CONTAINER_ID \
+        docker run --rm --network host \
           -v ${{ github.workspace }}:/app -w /app \
           -e DB_HOST=localhost \
           -e DB_USER=fqge_user \
           -e DB_PASS=fqge_password \
-          -e DB_SID=freepdb1 \
+          -e DB_SID=FREEPDB1 \
           -e API_BASE_URL=http://localhost:8080 \
           -e GITHUB_ACTIONS=true \
-          -e REMOTE_HOST=localhost \
-          -e REMOTE_USER=root \
-          -e SSH_KEY=/root/.ssh/id_rsa \
+          -e CI=true \
           -e JMETER_HOME=/opt/jmeter \
           fqge-app \
-          sh -c "apt-get update && apt-get install -y bc && chmod +x fqge.sh && ./fqge.sh"
+          sh -c "apt-get update -qq && apt-get install -y -qq bc && chmod +x *.sh && ./fqge.sh"
 
     # ================================================================================
-    # STEP 7: ARTIFACT UPLOAD (REPORT ARCHIVAL)
+    # STEP 8: ARTIFACT UPLOAD (REPORT ARCHIVAL)
     # ================================================================================
     # Purpose: Save FQGE validation report as pipeline artifact for download/analysis
     # Action: actions/upload-artifact@v4 - Official GitHub artifact upload action
@@ -174,7 +185,7 @@ jobs:
         path: fqge_report.log                # File to upload
 
     # ================================================================================
-    # STEP 8: QUALITY GATE RESULT ANALYSIS
+    # STEP 9: QUALITY GATE RESULT ANALYSIS
     # ================================================================================
     # Purpose: Analyze FQGE results and set pipeline success/failure status
     # Logic: Check for "APPROVAL" in report to determine pass/fail
@@ -184,15 +195,18 @@ jobs:
     - name: Check FQGE Results
       run: |
         if [ -f fqge_report.log ]; then
+          echo "=== FQGE Report Contents ==="
+          cat fqge_report.log
+          echo "=========================="
           if grep -q "FINAL DECISION: APPROVAL" fqge_report.log; then
             echo "✅ Quality Gate PASSED"
             exit 0
           else
             echo "❌ Quality Gate FAILED"
-            cat fqge_report.log
             exit 1
           fi
         else
           echo "❌ FQGE report not found"
+          ls -la
           exit 1
         fi
