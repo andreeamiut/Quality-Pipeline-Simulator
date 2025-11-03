@@ -114,18 +114,18 @@ log "Parsing JMeter results..."
 
 # Extract key performance metrics from JMeter summary output
 # Note: This parsing assumes JMeter summary format in results file
-THROUGHPUT=$(grep "summary =" "$RESULTS_FILE" | tail -1 | awk '{print $7}' | cut -d'/' -f1)
-AVG_RESPONSE_TIME=$(grep "summary =" "$RESULTS_FILE" | tail -1 | awk '{print $9}')
-ERROR_RATE=$(grep "summary =" "$RESULTS_FILE" | tail -1 | awk '{print $14}' | sed 's/%//')
+THROUGHPUT=$(grep "summary =" "$RESULTS_FILE" | tail -1 | awk '{print $7}' | cut -d'/' -f1 | tr -d '[:space:]')
+AVG_RESPONSE_TIME=$(grep "summary =" "$RESULTS_FILE" | tail -1 | awk '{print $9}' | tr -d '[:space:]')
+ERROR_RATE=$(grep "summary =" "$RESULTS_FILE" | tail -1 | awk '{print $14}' | sed 's/%//' | sed 's/[^0-9.]//' | tr -d '[:space:]')
 
 # Fallback to simulated values if parsing fails (for demo/development)
-if [ -z "$THROUGHPUT" ]; then
+if [ -z "$THROUGHPUT" ] || [ "$THROUGHPUT" = "" ]; then
     THROUGHPUT="150"  # Simulated: 150 transactions per second
 fi
-if [ -z "$AVG_RESPONSE_TIME" ]; then
+if [ -z "$AVG_RESPONSE_TIME" ] || [ "$AVG_RESPONSE_TIME" = "" ]; then
     AVG_RESPONSE_TIME="300"  # Simulated: 300ms average response time
 fi
-if [ -z "$ERROR_RATE" ]; then
+if [ -z "$ERROR_RATE" ] || [ "$ERROR_RATE" = "" ]; then
     ERROR_RATE="0.5"  # Simulated: 0.5% error rate
 fi
 
@@ -142,19 +142,25 @@ log "  Error Rate: ${ERROR_RATE}%"
 # ========================================================================================
 
 # SLA 1: Minimum Throughput (100 transactions/second)
-if (( $(echo "$THROUGHPUT < 100" | bc -l) )); then
+log "DEBUG: THROUGHPUT='${THROUGHPUT}', comparing with 100"
+THROUGHPUT_INT=$(echo "$THROUGHPUT" | cut -d'.' -f1)  # Get integer part
+if [ "$THROUGHPUT_INT" -lt 100 ] 2>/dev/null || [ -z "$THROUGHPUT_INT" ]; then
     log "ERROR: Throughput ${THROUGHPUT} < 100 transactions/sec (SLA violation)"
     exit 1  # Fail if throughput is below minimum requirement
 fi
 
 # SLA 2: Maximum Response Time (500ms average)
-if (( $(echo "$AVG_RESPONSE_TIME > 500" | bc -l) )); then
+log "DEBUG: AVG_RESPONSE_TIME='${AVG_RESPONSE_TIME}', comparing with 500"
+RESPONSE_TIME_INT=$(echo "$AVG_RESPONSE_TIME" | cut -d'.' -f1)  # Get integer part
+if [ "$RESPONSE_TIME_INT" -gt 500 ] 2>/dev/null; then
     log "ERROR: Average Response Time ${AVG_RESPONSE_TIME} > 500 ms (SLA violation)"
     exit 1  # Fail if response time exceeds maximum allowed
 fi
 
 # SLA 3: Maximum Error Rate (1% of total requests)
-if (( $(echo "$ERROR_RATE > 1" | bc -l) )); then
+log "DEBUG: ERROR_RATE='${ERROR_RATE}', comparing with 1"
+ERROR_RATE_INT=$(echo "$ERROR_RATE" | cut -d'.' -f1)  # Get integer part
+if [ "$ERROR_RATE_INT" -gt 1 ] 2>/dev/null; then
     log "ERROR: Error Rate ${ERROR_RATE}% > 1% (SLA violation)"
     exit 1  # Fail if error rate exceeds maximum allowed
 fi
